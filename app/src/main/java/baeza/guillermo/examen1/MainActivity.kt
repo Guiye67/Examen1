@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
@@ -21,12 +22,18 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import baeza.guillermo.examen1.ui.theme.Examen1Theme
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import baeza.guillermo.examen1.ui.theme.mainPruple
+import baeza.guillermo.examen1.Models.Carta
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -35,6 +42,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             Examen1Theme {
                 var vista by rememberSaveable { mutableStateOf(1) }
+                val cartas by rememberSaveable { mutableStateOf(mutableListOf<Pair<String, Int>>(
+                    Pair("Pelicula 1", 10),
+                    Pair("Pelicula 2", 30)
+                )) }
+                val favoritas by rememberSaveable { mutableStateOf(mutableListOf<Pair<String, Int>>(
+                    Pair("Pelicula 1", 10)
+                )) }
 
                 if (vista == 1) {
                     //Sing In
@@ -44,17 +58,22 @@ class MainActivity : ComponentActivity() {
                     MyRegister(vistaChange = {vista = it})
                 } else if (vista == 3) {
                     // Home
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.LightGray)
-                            .padding(top = 200.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "Vista 3")
-                    }
+                    MyHome(
+                        cartas = cartas,
+                        vistaChange = {vista = it},
+                        onChangeFav = {
+                            if(!favoritas.contains(it))
+                                favoritas.add(Pair(it.first, it.second))
+                        },
+                        addCarta = {cartas.add(it)}
+                    )
                 } else {
                     // Favorites
+                    MyFavs(
+                        favoritas = favoritas,
+                        onChangeFav = {favoritas.remove(it)},
+                        vistaChange = {vista = it}
+                    )
                 }
             }
         }
@@ -70,7 +89,7 @@ fun MySingIn(vistaChange : (Int) -> Unit) {
     val scaffoldState = rememberScaffoldState()
 
     Scaffold(scaffoldState = scaffoldState,
-        topBar = { MyTopNav(enabled = false) },
+        topBar = { MyTopNavDis() },
         bottomBar = { MyBottomNav(enabled = false, vistaChange) },
         content = {
             Column(
@@ -133,7 +152,7 @@ fun MySingIn(vistaChange : (Int) -> Unit) {
                         Spacer(modifier = Modifier.height(50.dp))
                         Button(onClick = {
                                 if (user.isNotEmpty() && pswd.isNotEmpty()){
-                                    vistaChange(2)
+                                    vistaChange(3)
                                 }else{
                                     scope.launch {
                                         scaffoldState.snackbarHostState.showSnackbar(
@@ -192,7 +211,12 @@ fun MyBottomNav(enabled:Boolean, vistaChange : (Int) -> Unit){
 }
 
 @Composable
-fun MyTopNav(enabled:Boolean){
+fun MyTopNav(enabled:Boolean, scaffoldState : ScaffoldState, addCarta : (Pair<String, Int>) -> Unit, vistaChange : (Int) -> Unit){
+    var add by rememberSaveable { mutableStateOf(false) }
+    var nombreCarta by rememberSaveable{ mutableStateOf("") }
+    var likesCarta by rememberSaveable{ mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
     TopAppBar(
         title = {Text(text = "Monkey Films")},
         backgroundColor = mainPruple,
@@ -205,7 +229,86 @@ fun MyTopNav(enabled:Boolean){
             }
         },
         actions = {
-            IconButton(onClick = { }, enabled = enabled) {
+            IconButton(onClick = { add = true }, enabled = enabled) {
+                Icon(imageVector = Icons.Filled.Add, contentDescription = "Añadir")
+            }
+        }
+    )
+
+    if(add) {
+        Dialog(
+            onDismissRequest ={
+                add = false
+                nombreCarta = ""
+                likesCarta = ""
+            },
+            properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+        ) {
+            Column(
+                Modifier
+                    .background(Color.White)
+                    .padding(24.dp)
+                    .fillMaxWidth()
+            ) {
+                Text(
+                    text = "Añadir Película",
+                    fontSize = 25.sp
+                )
+                Spacer(Modifier.padding(top = 20.dp))
+                TextField(
+                    value = nombreCarta,
+                    onValueChange = { nombreCarta = it },
+                    placeholder = { Text(text = "Nombre de la peli") }
+                )
+                Spacer(modifier = Modifier.padding(top = 10.dp))
+                TextField(
+                    value = likesCarta,
+                    onValueChange = { likesCarta = it },
+                    placeholder = { Text(text = "Puntuacion de la peli") }
+                )
+                Spacer(modifier = Modifier.padding(top = 12.dp))
+                Button(
+                    onClick = {
+                        if (nombreCarta.isNotEmpty() && likesCarta.isNotEmpty()) {
+                            addCarta(Pair(nombreCarta, likesCarta.toInt()))
+                            nombreCarta = ""
+                            likesCarta = ""
+                            vistaChange(4)
+                            vistaChange(3)
+                            add = false
+                        } else {
+                            scope.launch {
+                                scaffoldState.snackbarHostState.showSnackbar(
+                                    "Completar los campos es obligatorio",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(backgroundColor = mainPruple)
+                ) {
+                    Text("Añadir", color = Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MyTopNavDis(){
+    TopAppBar(
+        title = {Text(text = "Monkey Films")},
+        backgroundColor = mainPruple,
+        contentColor = Color.White,
+        elevation = 123.dp,
+        modifier = Modifier.height(60.dp),
+        navigationIcon = {
+            IconButton(onClick = { }, enabled = false) {
+                Icon(imageVector = Icons.Filled.Menu, contentDescription = "Menu")
+            }
+        },
+        actions = {
+            IconButton(onClick = {}, enabled = false) {
                 Icon(imageVector = Icons.Filled.Add, contentDescription = "Añadir")
             }
         }
@@ -229,7 +332,7 @@ fun MyRegister(vistaChange : (Int) -> Unit) {
     val scaffoldState = rememberScaffoldState()
 
     Scaffold(scaffoldState = scaffoldState,
-        topBar = { MyTopNav(enabled = false) },
+        topBar = { MyTopNavDis() },
         bottomBar = { MyBottomNav(enabled = false, vistaChange) },
         content = {
             Column(
@@ -337,7 +440,7 @@ fun MyRegister(vistaChange : (Int) -> Unit) {
                 ) {
                     MyCheckbox("Deportes", state = deportes) {deportes = it}
 
-                    Spacer(modifier = Modifier.width(40.dp))
+                    Spacer(modifier = Modifier.width(37.dp))
 
                     MyCheckbox("Romance", state = romance) {romance = it}
                 }
@@ -350,7 +453,7 @@ fun MyRegister(vistaChange : (Int) -> Unit) {
                 ) {
                     MyCheckbox("Acción", state = accion) {accion = it}
 
-                    Spacer(modifier = Modifier.width(40.dp))
+                    Spacer(modifier = Modifier.width(54.dp))
 
                     MyCheckbox("Históricas", state = historicas) {historicas = it}
                 }
@@ -363,7 +466,7 @@ fun MyRegister(vistaChange : (Int) -> Unit) {
                 ) {
                     MyCheckbox("Si-Fi", state = sifi) {sifi = it}
 
-                    Spacer(modifier = Modifier.width(40.dp))
+                    Spacer(modifier = Modifier.width(73.dp))
 
                     MyCheckbox("Documentales", state = documentales) {documentales = it}
                 }
@@ -403,4 +506,142 @@ fun MyCheckbox(texto:String, state:Boolean, onCheckedChange: (Boolean) -> Unit) 
         colors = CheckboxDefaults.colors(checkedColor = mainPruple)
     )
     Text(text = texto, modifier = Modifier.padding(top = 13.dp))
+}
+
+@Composable
+fun MyHome(cartas: MutableList<Pair<String, Int>>, onChangeFav: (Pair<String,Int>) -> Unit, vistaChange : (Int) -> Unit, addCarta : (Pair<String, Int>) -> Unit) {
+    val scaffoldState = rememberScaffoldState()
+    Scaffold(
+        scaffoldState = scaffoldState,
+        topBar = { MyTopNav(enabled = true, scaffoldState = scaffoldState, addCarta, vistaChange) },
+        bottomBar = { MyBottomNav(enabled = true, vistaChange = vistaChange) },
+        content = {
+            Column(
+                Modifier.padding(2.dp)
+            ){
+                cartas.forEach { item ->
+                    MyCard(item.first, item.second, onChangeFav = onChangeFav, scaffoldState)
+                    Spacer(modifier = Modifier.padding(bottom = 2.dp))
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun MyCard(nombre:String, likes: Int, onChangeFav: (Pair<String,Int>) -> Unit, scaffoldState : ScaffoldState) {
+    val scope = rememberCoroutineScope()
+
+    Card(
+        elevation = 10.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(70.dp)
+    ) {
+        Row(Modifier.padding(start = 1.dp, top = 4.dp)){
+            Image(
+                painter = painterResource(R.drawable.usuario),
+                contentDescription = "Icono",
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+            )
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ){
+                Column(Modifier.padding(start = 20.dp, top = 7.dp)) {
+                    Text(nombre)
+                    Row{
+                        Icon(
+                            imageVector = Icons.Filled.Star, contentDescription = "Puntuacion",
+                            Modifier
+                                .size(20.dp)
+                                .padding(top = 1.dp)
+                        )
+                        Text(text = likes.toString(), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+                    }
+                }
+                IconButton(
+                    onClick = {onChangeFav(Pair(nombre, likes))
+                        scope.launch {
+                            scaffoldState.snackbarHostState.showSnackbar(
+                                "Pelicula añadida a favoritos...",
+                                duration = SnackbarDuration.Short
+                            )
+                        }},
+                    modifier = Modifier.padding(top = 7.dp)
+                ) {
+                    Icon(imageVector = Icons.Filled.Add, contentDescription = "add")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MyFavs(favoritas : MutableList<Pair<String, Int>>, onChangeFav: (Pair<String,Int>) -> Unit, vistaChange : (Int) -> Unit) {
+    val scaffoldState = rememberScaffoldState()
+    Scaffold(
+        scaffoldState = scaffoldState,
+        topBar = { MyTopNavDis() },
+        bottomBar = { MyBottomNav(enabled = true, vistaChange = vistaChange) },
+        content = {
+            Column(
+                Modifier.padding(2.dp)
+            ){
+                favoritas.forEach { item ->
+                    MyFavCard(item.first, item.second, onChangeFav = onChangeFav, vistaChange)
+                    Spacer(modifier = Modifier.padding(bottom = 2.dp))
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun MyFavCard(nombre:String, likes: Int, onChangeFav: (Pair<String,Int>) -> Unit, vistaChange : (Int) -> Unit) {
+    Card(
+        elevation = 10.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(70.dp)
+    ) {
+        Row(Modifier.padding(start = 1.dp, top = 4.dp)){
+            Image(
+                painter = painterResource(R.drawable.usuario),
+                contentDescription = "Icono",
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(CircleShape)
+            )
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ){
+                Column(Modifier.padding(start = 20.dp, top = 7.dp)) {
+                    Text(nombre)
+                    Row{
+                        Icon(
+                            imageVector = Icons.Filled.Star, contentDescription = "Puntuacion",
+                            Modifier
+                                .size(20.dp)
+                                .padding(top = 1.dp)
+                        )
+                        Text(text = likes.toString(), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+                    }
+                }
+                IconButton(
+                    onClick = {
+                        onChangeFav(Pair(nombre, likes))
+                        vistaChange(3)
+                        vistaChange(4)
+                    },
+                    modifier = Modifier.padding(top = 7.dp)
+                ) {
+                    Icon(imageVector = Icons.Filled.Delete, contentDescription = "delete")
+                }
+            }
+        }
+    }
 }
