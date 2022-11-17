@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -541,48 +542,99 @@ fun MyCard(carta:Carta, onChangeFav: (Carta) -> Unit, scaffoldState : ScaffoldSt
     val scope = rememberCoroutineScope()
     var verMas by rememberSaveable { mutableStateOf(false) }
 
-    Card(
-        elevation = 10.dp,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(70.dp),
-        onClick = {verMas = !verMas}
-    ) {
-        Row(Modifier.padding(start = 1.dp, top = 4.dp)){
-            Image(
-                painter = painterResource(R.drawable.usuario),
-                contentDescription = "Icono",
-                modifier = Modifier
-                    .size(60.dp)
-                    .clip(CircleShape)
-            )
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ){
-                Column(Modifier.padding(start = 20.dp, top = 7.dp)) {
-                    Text(carta.nombre)
-                    Row{
+    if(verMas) {
+        Card(
+            elevation = 10.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(290.dp),
+            onClick = {verMas = !verMas}
+        ) {
+            Column() {
+                Image(
+                    painterResource(id = carta.imagen),
+                    contentDescription = carta.descripcion,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                )
+                Row(modifier = Modifier.padding(start = 1.dp, top = 4.dp)) {
+                    Image(
+                        painter = painterResource(R.drawable.usuario),
+                        contentDescription = "Icono",
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ){
+                        Column(
+                            modifier = Modifier
+                                .padding(start = 20.dp, top = 7.dp)
+                                .fillMaxWidth(0.8f)
+                        ) {
+                            Text(carta.nombre)
+                            Text(carta.descripcion,
+                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2,
+                                fontSize = 14.sp
+                            )
+                        }
                         Icon(
-                            imageVector = Icons.Filled.Star, contentDescription = "Puntuacion",
-                            Modifier
-                                .size(20.dp)
-                                .padding(top = 1.dp)
+                            imageVector = Icons.Filled.Star, contentDescription = "Puntuacion"
                         )
-                        Text(text = carta.likes.toString(), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+                        Text(text = carta.likes.toString(),
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(end = 8.dp))
                     }
                 }
-                IconButton(
-                    onClick = {onChangeFav(carta)
-                        scope.launch {
-                            scaffoldState.snackbarHostState.showSnackbar(
-                                "Pelicula añadida a favoritos...",
-                                duration = SnackbarDuration.Short
+            }
+        }
+    } else {
+        Card(
+            elevation = 10.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(70.dp),
+            onClick = {verMas = !verMas}
+        ) {
+            Row(Modifier.padding(start = 1.dp, top = 4.dp)){
+                Image(
+                    painter = painterResource(R.drawable.usuario),
+                    contentDescription = "Icono",
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ){
+                    Column(Modifier.padding(start = 20.dp, top = 7.dp)) {
+                        Text(carta.nombre)
+                        Row{
+                            Icon(
+                                imageVector = Icons.Filled.Star, contentDescription = "Puntuacion",
+                                Modifier
+                                    .size(20.dp)
+                                    .padding(top = 1.dp)
                             )
-                        }},
-                    modifier = Modifier.padding(top = 7.dp)
-                ) {
-                    Icon(imageVector = Icons.Filled.Add, contentDescription = "add")
+                            Text(text = carta.likes.toString(), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+                        }
+                    }
+                    IconButton(
+                        onClick = {onChangeFav(carta)
+                            scope.launch {
+                                scaffoldState.snackbarHostState.showSnackbar(
+                                    "Pelicula añadida a favoritos...",
+                                    duration = SnackbarDuration.Short
+                                )
+                            }},
+                        modifier = Modifier.padding(top = 7.dp)
+                    ) {
+                        Icon(imageVector = Icons.Filled.Add, contentDescription = "add")
+                    }
                 }
             }
         }
