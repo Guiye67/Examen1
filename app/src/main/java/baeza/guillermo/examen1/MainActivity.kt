@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import baeza.guillermo.examen1.ui.theme.Examen1Theme
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -33,8 +32,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import baeza.guillermo.examen1.ui.theme.mainPruple
-import baeza.guillermo.examen1.Models.Carta
 import kotlinx.coroutines.launch
+import baeza.guillermo.examen1.models.Carta
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,12 +41,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             Examen1Theme {
                 var vista by rememberSaveable { mutableStateOf(1) }
-                val cartas by rememberSaveable { mutableStateOf(mutableListOf<Pair<String, Int>>(
-                    Pair("Pelicula 1", 10),
-                    Pair("Pelicula 2", 30)
+                val cartas by rememberSaveable { mutableStateOf(mutableListOf<Carta>(
+                    Carta("Pelicula 1", 10, R.drawable.paisaje, "Descripcion 1"),
+                    Carta("Pelicula 2", 30, R.drawable.paisaje, "Descripcion 2")
                 )) }
-                val favoritas by rememberSaveable { mutableStateOf(mutableListOf<Pair<String, Int>>(
-                    Pair("Pelicula 1", 10)
+                val favoritas by rememberSaveable { mutableStateOf(mutableListOf<Carta>(
+                    Carta("Pelicula 1", 10, R.drawable.paisaje, "Descripcion 1")
                 )) }
 
                 if (vista == 1) {
@@ -63,7 +62,7 @@ class MainActivity : ComponentActivity() {
                         vistaChange = {vista = it},
                         onChangeFav = {
                             if(!favoritas.contains(it))
-                                favoritas.add(Pair(it.first, it.second))
+                                favoritas.add(Carta(it.nombre, it.likes, it.imagen, it.descripcion))
                         },
                         addCarta = {cartas.add(it)}
                     )
@@ -211,10 +210,11 @@ fun MyBottomNav(enabled:Boolean, vistaChange : (Int) -> Unit){
 }
 
 @Composable
-fun MyTopNav(enabled:Boolean, scaffoldState : ScaffoldState, addCarta : (Pair<String, Int>) -> Unit, vistaChange : (Int) -> Unit){
+fun MyTopNav(enabled:Boolean, scaffoldState : ScaffoldState, addCarta : (Carta) -> Unit, vistaChange : (Int) -> Unit){
     var add by rememberSaveable { mutableStateOf(false) }
     var nombreCarta by rememberSaveable{ mutableStateOf("") }
     var likesCarta by rememberSaveable{ mutableStateOf("") }
+    var descripcion by rememberSaveable{ mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     TopAppBar(
@@ -241,6 +241,7 @@ fun MyTopNav(enabled:Boolean, scaffoldState : ScaffoldState, addCarta : (Pair<St
                 add = false
                 nombreCarta = ""
                 likesCarta = ""
+                descripcion = ""
             },
             properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
         ) {
@@ -266,11 +267,17 @@ fun MyTopNav(enabled:Boolean, scaffoldState : ScaffoldState, addCarta : (Pair<St
                     onValueChange = { likesCarta = it },
                     placeholder = { Text(text = "Puntuacion de la peli") }
                 )
+                Spacer(modifier = Modifier.padding(top = 10.dp))
+                TextField(
+                    value = descripcion,
+                    onValueChange = { descripcion = it },
+                    placeholder = { Text(text = "Descripción de la peli") }
+                )
                 Spacer(modifier = Modifier.padding(top = 12.dp))
                 Button(
                     onClick = {
                         if (nombreCarta.isNotEmpty() && likesCarta.isNotEmpty()) {
-                            addCarta(Pair(nombreCarta, likesCarta.toInt()))
+                            addCarta(Carta(nombreCarta, likesCarta.toInt(), R.drawable.paisaje, descripcion))
                             nombreCarta = ""
                             likesCarta = ""
                             vistaChange(4)
@@ -509,7 +516,7 @@ fun MyCheckbox(texto:String, state:Boolean, onCheckedChange: (Boolean) -> Unit) 
 }
 
 @Composable
-fun MyHome(cartas: MutableList<Pair<String, Int>>, onChangeFav: (Pair<String,Int>) -> Unit, vistaChange : (Int) -> Unit, addCarta : (Pair<String, Int>) -> Unit) {
+fun MyHome(cartas: MutableList<Carta>, onChangeFav: (Carta) -> Unit, vistaChange : (Int) -> Unit, addCarta : (Carta) -> Unit) {
     val scaffoldState = rememberScaffoldState()
     Scaffold(
         scaffoldState = scaffoldState,
@@ -520,7 +527,7 @@ fun MyHome(cartas: MutableList<Pair<String, Int>>, onChangeFav: (Pair<String,Int
                 Modifier.padding(2.dp)
             ){
                 cartas.forEach { item ->
-                    MyCard(item.first, item.second, onChangeFav = onChangeFav, scaffoldState)
+                    MyCard(item, onChangeFav = onChangeFav, scaffoldState)
                     Spacer(modifier = Modifier.padding(bottom = 2.dp))
                 }
             }
@@ -528,15 +535,18 @@ fun MyHome(cartas: MutableList<Pair<String, Int>>, onChangeFav: (Pair<String,Int
     )
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun MyCard(nombre:String, likes: Int, onChangeFav: (Pair<String,Int>) -> Unit, scaffoldState : ScaffoldState) {
+fun MyCard(carta:Carta, onChangeFav: (Carta) -> Unit, scaffoldState : ScaffoldState) {
     val scope = rememberCoroutineScope()
+    var verMas by rememberSaveable { mutableStateOf(false) }
 
     Card(
         elevation = 10.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .height(70.dp)
+            .height(70.dp),
+        onClick = {verMas = !verMas}
     ) {
         Row(Modifier.padding(start = 1.dp, top = 4.dp)){
             Image(
@@ -551,7 +561,7 @@ fun MyCard(nombre:String, likes: Int, onChangeFav: (Pair<String,Int>) -> Unit, s
                 modifier = Modifier.fillMaxWidth()
             ){
                 Column(Modifier.padding(start = 20.dp, top = 7.dp)) {
-                    Text(nombre)
+                    Text(carta.nombre)
                     Row{
                         Icon(
                             imageVector = Icons.Filled.Star, contentDescription = "Puntuacion",
@@ -559,11 +569,11 @@ fun MyCard(nombre:String, likes: Int, onChangeFav: (Pair<String,Int>) -> Unit, s
                                 .size(20.dp)
                                 .padding(top = 1.dp)
                         )
-                        Text(text = likes.toString(), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+                        Text(text = carta.likes.toString(), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
                     }
                 }
                 IconButton(
-                    onClick = {onChangeFav(Pair(nombre, likes))
+                    onClick = {onChangeFav(carta)
                         scope.launch {
                             scaffoldState.snackbarHostState.showSnackbar(
                                 "Pelicula añadida a favoritos...",
@@ -580,7 +590,7 @@ fun MyCard(nombre:String, likes: Int, onChangeFav: (Pair<String,Int>) -> Unit, s
 }
 
 @Composable
-fun MyFavs(favoritas : MutableList<Pair<String, Int>>, onChangeFav: (Pair<String,Int>) -> Unit, vistaChange : (Int) -> Unit) {
+fun MyFavs(favoritas : MutableList<Carta>, onChangeFav: (Carta) -> Unit, vistaChange : (Int) -> Unit) {
     val scaffoldState = rememberScaffoldState()
     Scaffold(
         scaffoldState = scaffoldState,
@@ -591,7 +601,7 @@ fun MyFavs(favoritas : MutableList<Pair<String, Int>>, onChangeFav: (Pair<String
                 Modifier.padding(2.dp)
             ){
                 favoritas.forEach { item ->
-                    MyFavCard(item.first, item.second, onChangeFav = onChangeFav, vistaChange)
+                    MyFavCard(item, onChangeFav = onChangeFav, vistaChange)
                     Spacer(modifier = Modifier.padding(bottom = 2.dp))
                 }
             }
@@ -600,7 +610,7 @@ fun MyFavs(favoritas : MutableList<Pair<String, Int>>, onChangeFav: (Pair<String
 }
 
 @Composable
-fun MyFavCard(nombre:String, likes: Int, onChangeFav: (Pair<String,Int>) -> Unit, vistaChange : (Int) -> Unit) {
+fun MyFavCard(carta:Carta, onChangeFav: (Carta) -> Unit, vistaChange : (Int) -> Unit) {
     Card(
         elevation = 10.dp,
         modifier = Modifier
@@ -620,7 +630,7 @@ fun MyFavCard(nombre:String, likes: Int, onChangeFav: (Pair<String,Int>) -> Unit
                 modifier = Modifier.fillMaxWidth()
             ){
                 Column(Modifier.padding(start = 20.dp, top = 7.dp)) {
-                    Text(nombre)
+                    Text(carta.nombre)
                     Row{
                         Icon(
                             imageVector = Icons.Filled.Star, contentDescription = "Puntuacion",
@@ -628,12 +638,12 @@ fun MyFavCard(nombre:String, likes: Int, onChangeFav: (Pair<String,Int>) -> Unit
                                 .size(20.dp)
                                 .padding(top = 1.dp)
                         )
-                        Text(text = likes.toString(), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+                        Text(text = carta.likes.toString(), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
                     }
                 }
                 IconButton(
                     onClick = {
-                        onChangeFav(Pair(nombre, likes))
+                        onChangeFav(carta)
                         vistaChange(3)
                         vistaChange(4)
                     },
